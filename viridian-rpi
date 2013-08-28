@@ -1,162 +1,286 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+### BEGIN LICENSE
+# Copyright (C) 2010 Dave Eddy <dave@daveeddy.com>
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 3, as published
+# by the Free Software Foundation.
 #
-# Copyright (c) 2012, Dave Eddy <dave@daveeddy.com>
-# All rights reserved.
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranties of
+# MERCHANTABILITY, SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR
+# PURPOSE.  See the GNU General Public License for more details.
 #
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-# * Redistributions of source code must retain the above copyright
-# notice, this list of conditions and the following disclaimer.
-# * Redistributions in binary form must reproduce the above copyright
-# notice, this list of conditions and the following disclaimer in the
-# documentation and/or other materials provided with the distribution.
-# * Neither the name of the project nor the
-# names of its contributors may be used to endorse or promote products
-# derived from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
-# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# You should have received a copy of the GNU General Public License along
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+### END LICENSE
 
+__program__    = "Viridian-cli"
+__author__     = "David Eddy"
+__license__    = "GPLv3"
+__version__    = "2.1"
+__maintainer__ = "Richard Edmonds"
+__email__      = "rlecheese@hotmail.com"
+__status__     = "Release"
 
-__program__ = "Viridian-cli"
-__author__ = "David Eddy"
-__license__ = "BSD 3-Clause"
-__version__ = "1.3"
-__maintainer__ = "David Eddy"
-__email__ = "dave@daveeddy.com"
-__status__ = "Release"
-
-from AmpacheTools import AmpacheSession, DatabaseSession, AudioEngine
+import AmpacheTools
+from AmpacheTools import PimpacheSession, DatabaseSession, MediaEngine
 
 import os
 from getpass import getpass
 
-VIRIDIAN_DIR = os.path.join(os.path.expanduser("~"), '.viridian')
+VIRIDIAN_DIR = os.path.expanduser("~") + os.sep + '.viridian'
 
 def get_valid_digit(prompt = "Enter data: "):
-    valid = False
-    while not valid:
-        _id = raw_input("\n\n%s" % (prompt))
-        if _id.isdigit():
-            valid = True
-        else:
-            print "Error! Invalid Album ID"
-    return _id
-
+	valid = False
+	while not valid:
+		_id = raw_input("\n\n%s" % (prompt))
+		if _id.isdigit():
+			valid = True
+		else:
+			print "Error! Invalid ID Selected"
+		
+	return _id
 def print_now_playing():
-    song_id = audio_engine.get_current_song_id()
-    song_dict = ampache_conn.get_song_info(song_id)
-    print " - Now Playing - "
-    print song_dict['song_title']
-    print "By: %s" % song_dict['artist_name']
-    print "On: %s" % song_dict['album_name']
-
+	song_id   = media_engine.get_current_song_id()
+	song_dict = ampache_conn.get_song_info(song_id)
+	print " - Now Playing - "
+	print song_dict['song_title']
+	print "By: %s" % song_dict['artist_name']
+	print "On: %s" % song_dict['album_name']
+	
 def next_track():
-    audio_engine.next_track()
-    print_now_playing()
-
+	media_engine.next_track()
+	print_now_playing()
 def prev_track():
-    audio_engine.prev_track()
-    print_now_playing()
+	media_engine.prev_track()
+	print_now_playing()
+
 
 if __name__ == "__main__":
-#Source selection option needs to be added here
-#LOCAL
-#Local source needs a db entry to store the source folder location
-#USB - will be similar to local but will need to detect attached USB drives using the python USB module
-#DLNA/UPNP - will need to copy code from the raspberry pi DLNA renderer work
-#AMPACHE - needs to be extended to choose from playlists
-  is_first_time = True
-    if os.path.exists(VIRIDIAN_DIR):
-        is_first_time = False
-        db_session = DatabaseSession.DatabaseSession(VIRIDIAN_DIR + os.sep + 'viridian.sqlite')
 
-    ampache_conn = AmpacheSession.AmpacheSession()
-    audio_engine = AudioEngine.AudioEngine(ampache_conn)
+	print "1: Local drive"
+	print "2: usb drive"
+	print "3: FTP drive"
+	print "4: Ampache source"
+	source_id  = raw_input("Select source: ")
 
-    audio_engine.set_repeat_songs(True)
+	is_first_time = True
+	if os.path.exists(VIRIDIAN_DIR):
+		is_first_time = False
+		#db_session = DatabaseSession(VIRIDIAN_DIR + os.sep + 'viridian.sqlite')
+		db_session = DatabaseSession('viridian.sqlite')
+		#Alternitively we need to run adams code here to pull session info from either user input or from a local config file
 
-    ready = False
-    if not is_first_time:
-        username = db_session.variable_get('credentials_username')
-        password = db_session.variable_get('credentials_password')
-        url = db_session.variable_get('credentials_url')
-        ampache_conn.set_credentials(username, password, url)
-        if ampache_conn.has_credentials():
-            #resp = raw_input("Username '%s' found for Ampache Server '%s'.\nConnect using these credentials? [Y/n]: " % (username, url))
-            resp = 'y'
-            if resp != 'n' and resp != 'N': # then use the credentials
-                ampache_conn.authenticate()
-                ready = True
+	ampache_conn = PimpacheSession()
+	media_engine = MediaEngine(ampache_conn)
 
-    while not ready:
-        url = raw_input("Ampache Server URL (ie 'http://example.org/ampache'): ")
-        username = raw_input("Username: ")
-        password = getpass("Password: ")
-        ampache_conn.set_credentials(username, password, url)
-        if ampache_conn.has_credentials():
-            if ampache_conn.authenticate():
-                ready = True
-        else:
-            print "Error! Try Again"
+	media_engine.set_repeat_songs(True)
+	
+	ready = False
+	if not is_first_time:
+		username = db_session.variable_get('credentials_username')
+		password = db_session.variable_get('credentials_password')
+		url      = db_session.variable_get('credentials_url')
+		ampache_conn.set_credentials(username, password, url)
+		if ampache_conn.has_credentials():
+			resp = raw_input("Username '%s' found for Ampache Server '%s'.\nConnect using these credentials? [Y/n]: " % (username, url))
+			if resp != 'n' and resp != 'N': # then use the credentials
+				ampache_conn.authenticate()
+				ready = True
 
-# A selection option needs to be added here to create song lists from either songs/artists/albums or most importantly playlists
-#At the moment the song list is generated from an album selected from a selected artist
+	print "1: Artist"
+	print "2: Album"
+	print "3: Playlist"
+	print "4: video"
+	print "5: song (not recommended)"
+	selection_id  = raw_input("Select ampache search: ")
 
-    for artist in ampache_conn.get_artists():
-        print "%d: %s" % (artist['artist_id'], artist['artist_name'])
+#Code above this point give the option to play local content however this doesnt work yet and any choice lead on to the following ampache code
+#FYI local uris will work and/but need to fed in in the form of "file:///path-to-file/filename.mp3"
 
-    artist_id = get_valid_digit("Artist ID: ")
+	while not ready:
+		url  = raw_input("Ampache Server URL (ie 'http://example.org/ampache'): ")
+		username = raw_input("Username: ") 
+		password = getpass("Password: ")
+		ampache_conn.set_credentials(username, password, url)
+		if ampache_conn.has_credentials():
+			if ampache_conn.authenticate():
+				ready = True
+		else:
+			print "Error! Try Again"
+	
+	if selection_id == "1":
+		for artist in ampache_conn.get_artists():
+			print "%d: %s" % (artist['artist_id'], artist['artist_name'])
 
-    print '\n'
-    for album in ampache_conn.get_albums_by_artist(artist_id):
-        print "%d: %s (Year = %s, Disk = %d, Tracks = %d)" % (album['album_id'], album['album_name'], album['album_year'], album['album_disk'], album['album_tracks'])
+		artist_id = get_valid_digit("Artist ID: ")
 
-    album_id = get_valid_digit("Album ID: ")
+		print '\n'
+		for album in ampache_conn.get_albums_by_artist(artist_id):
+			print "%d: %s (Year = %s, Disk = %d, Tracks = %d)" % (album['album_id'], album['album_name'], album['album_year'], album['album_disk'], album['album_tracks'])
+	
+		album_id = get_valid_digit("Album ID: ")
+	
+		print '\n'
+		song_list = ampache_conn.get_songs_by_album(album_id)
+		song_list = sorted(song_list, key=lambda k: k['song_track'])
+		for song in song_list:
+			print "%d: %s" % (song['song_track'], song['song_title'])
+		list = []
+		for song in song_list:
+			list.append(song['song_id'])
 
-    print '\n'
-    song_list = ampache_conn.get_songs_by_album(album_id)
-    song_list = sorted(song_list, key=lambda k: k['song_track'])
-    for song in song_list:
-        print "%d: %s" % (song['song_track'], song['song_title'])
-    l = []
-    for song in song_list:
-        l.append(song['song_id'])
 
-#Code above this point prepares a list of uris for the audio engine to play
-#local uris need to fed in in the form of "file:///path-to-file/filename.mp3"
+		song_track = get_valid_digit("Track Number: ")
+		media_engine.play_from_list_of_songs(list, int(song_track)-1)
 
-    song_track = get_valid_digit("Track Number: ")
-    audio_engine.play_from_list_of_songs(list, int(song_track)-1)
+		print_now_playing()
+	
+		quit = False
+		while not quit:
+			print "Choices are 'n' for next, 'p' for previous, 'i' for info, 's' for play/pause, and 'q' for quit"
+			resp = raw_input("Choice: ")
+			print "\n\n"
+			if resp == 'n':
+				next_track()
+			elif resp == 'p':
+				prev_track()
+			elif resp == 'i':
+				print_now_playing()
+			elif resp == 's':
+				if media_engine.get_state() == 'playing':
+					media_engine.pause()
+					print media_engine.get_state()
+				else:
+					media_engine.play()
+					print media_engine.get_state()
+			elif resp == 'q':
+				quit = True
+			print "\n\n"
 
-    print_now_playing()
+	if selection_id == "2":
+		for album in ampache_conn.get_albums():
+			print "%d: %s  %s (Year = %s, Disk = %d, Tracks = %d)" % (album['album_id'], album['artist_name'], album['album_name'], album['album_year'], album['album_disk'], album['album_tracks'])
+	
+		album_id = get_valid_digit("Album ID: ")
+	
+		print '\n'
+		song_list = ampache_conn.get_songs_by_album(album_id)
+		song_list = sorted(song_list, key=lambda k: k['song_track'])
+		for song in song_list:
+			print "%d: %s" % (song['song_track'], song['song_title'])
+		list = []
+		for song in song_list:
+			list.append(song['song_id'])
 
-    quit = False
-    while not quit:
-        print "Choices are 'n' for next, 'p' for previous, 'i' for info, 's' for play/pause, and 'q' for quit"
-        resp = raw_input("Choice: ")
-        print "\n\n"
-        if resp == 'n':
-            next_track()
-        elif resp == 'p':
-            prev_track()
-        elif resp == 'i':
-            print_now_playing()
-        elif resp == 's':
-            if audio_engine.get_state() == 'playing':
-                audio_engine.pause()
-                print audio_engine.get_state()
-            else:
-                audio_engine.play()
-                print audio_engine.get_state()
-        elif resp == 'q':
-            quit = True
-        print "\n\n"
+
+		song_track = get_valid_digit("Track Number: ")
+		media_engine.play_from_list_of_songs(list, int(song_track)-1)
+
+		print_now_playing()
+	
+		quit = False
+		while not quit:
+			print "Choices are 'n' for next, 'p' for previous, 'i' for info, 's' for play/pause, and 'q' for quit"
+			resp = raw_input("Choice: ")
+			print "\n\n"
+			if resp == 'n':
+				next_track()
+			elif resp == 'p':
+				prev_track()
+			elif resp == 'i':
+				print_now_playing()
+			elif resp == 's':
+				if media_engine.get_state() == 'playing':
+					media_engine.pause()
+					print media_engine.get_state()
+				else:
+					media_engine.play()
+					print media_engine.get_state()
+			elif resp == 'q':
+				quit = True
+			print "\n\n"
+
+	if selection_id == "3":
+		for playlist in ampache_conn.get_playlists():
+			print "%d: %s  %s  %s  %s" % (playlist['id'], playlist['owner'], playlist['name'], playlist['items'], playlist['type'])
+	
+		playlist_id = get_valid_digit("Playlist ID: ")
+	
+		print '\n'
+		song_list = ampache_conn.get_playlist_songs(playlist_id)
+		song_list = sorted(song_list, key=lambda k: k['song_track'])
+		for song in song_list:
+			print "%d: %s" % (song['song_track'], song['song_title'])
+		list = []
+		for song in song_list:
+			list.append(song['song_id'])
+
+
+		song_track = get_valid_digit("Track Number: ")
+		media_engine.play_from_list_of_songs(list, int(song_track)-1)
+
+		print_now_playing()
+	
+		quit = False
+		while not quit:
+			print "Choices are 'n' for next, 'p' for previous, 'i' for info, 's' for play/pause, and 'q' for quit"
+			resp = raw_input("Choice: ")
+			print "\n\n"
+			if resp == 'n':
+				next_track()
+			elif resp == 'p':
+				prev_track()
+			elif resp == 'i':
+				print_now_playing()
+			elif resp == 's':
+				if media_engine.get_state() == 'playing':
+					media_engine.pause()
+					print media_engine.get_state()
+				else:
+					media_engine.play()
+					print media_engine.get_state()
+			elif resp == 'q':
+				quit = True
+			print "\n\n"
+
+	if selection_id == "4":
+	#Selection 4:Videos is under construction and needs additional commands that are video specific added to the mediaengine in order to run
+		print '\n'
+		video_list = ampache_conn.get_videos()
+		#video_list = sorted(video_list, key=lambda k: k['song_track'])
+		for video in video_list:
+			print "%d: %s" % (video['video_id'], video['video_title'])
+		list = []
+		for video in video_list:
+			list.append(video['video_id'])
+
+		video_number = get_valid_digit("Video Number: ")
+		media_engine.play_from_list_of_videos(list, int(video_number)-1)
+
+		print_now_playing()
+	
+		quit = False
+		while not quit:
+			print "Choices are 'n' for next, 'p' for previous, 'i' for info, 's' for play/pause, and 'q' for quit"
+			resp = raw_input("Choice: ")
+			print "\n\n"
+			if resp == 'n':
+				next_track()
+			elif resp == 'p':
+				prev_track()
+			elif resp == 'i':
+				print_now_playing()
+			elif resp == 's':
+				if media_engine.get_state() == 'playing':
+					media_engine.pause()
+					print media_engine.get_state()
+				else:
+					media_engine.play()
+					print media_engine.get_state()
+			elif resp == 'q':
+				quit = True
+			print "\n\n"
+
+		
